@@ -1,0 +1,39 @@
+{
+    "name": "@svelte-i18n/cli",
+    "version": "0.1.0",
+    "description": "CLI tool for svelte-i18n",
+    "type": "module",
+    "bin": {
+        "svelte-i18n": "./dist/index.js"
+    },
+    "main": "./dist/index.js",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx watch src/index.ts generate-types --input /home/codeit/i18n/cli/test/en.json",
+        "start": "node dist/index.js",
+        "format": "prettier --write src",
+        "format:check": "prettier --check src"
+    },
+    "dependencies": {
+        "commander": "^14.0.3",
+        "zod": "^4.3.6"
+    },
+    "devDependencies": {
+        "@types/node": "^25.5.0",
+        "prettier": "^3.8.1",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "license": "MIT",
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "esbuild"
+        ]
+    }
+}
