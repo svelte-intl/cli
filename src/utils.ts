@@ -25,3 +25,8 @@ export function isURL(str: string): boolean {
 export async function importJSON(path: string): Promise<any> {
     return (await import(path, { with: { type: 'json' } })).default;
 }
+
+export async function fetchJSON(url: string): Promise<any> {
+    const result = await fetch(url);
+    return await result.json();
+}

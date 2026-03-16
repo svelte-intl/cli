@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { Option, Command } from 'commander';
 import PACKAGE from '../package.json' with { type: 'json' };
-import { importJSON, isURL, t } from './utils.js';
+import { importJSON, fetchJSON, isURL, t } from './utils.js';
 import { z } from 'zod';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { parse, dirname } from 'node:path';
 
 const program = new Command();
 const schema = z.record(z.string(), z.string());
@@ -16,19 +17,17 @@ program.name('svelte-i18n')
 program
     .command('generate-types')
     .description('Generate TypeScript types for translations')
-    .addOption(
-        new Option(
-            '--input <path>',
-            'Path to the translations file (e.g., src/locales/en.json) or a URL (e.g., https://example.com/locales/en.json)',
-        ),
+    .option(
+        '--input <path>',
+        'Path to the translations file (e.g., src/locales/en.json) or a URL (e.g., https://example.com/locales/en.json)',
     )
-    .action(async ({ input }) => {
-        if (isURL(input)) {
-            console.log(`Generating types from URL: ${input}`);
-            return;
-        }
-
-        const [json, error] = await t(() => importJSON(input));
+    .option(
+        '--output <path>',
+        'Path to the output file (e.g., src/locales/en.d.ts)',
+        './i18n-types.d.ts',
+    )
+    .action(async ({ input, output }) => {
+        const [json, error] = await t(() => (isURL(input) ? fetchJSON(input) : importJSON(input)));
 
         if (error) {
             return program.error(
@@ -51,7 +50,9 @@ program
             .map((key) => `    '${key.replace(/'/g, "\\'")}': string;`)
             .join('\n')}\n};\n`;
 
-        writeFile('i18n-types.d.ts', typeDefinition)
+        await mkdir(dirname(output), { recursive: true });
+
+        writeFile(output, typeDefinition, {})
             .then(() => console.log('Type definitions generated successfully in i18n-types.d.ts'))
             .catch((err) =>
                 program.error(
