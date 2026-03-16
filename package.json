@@ -6,6 +6,10 @@
     "bin": {
         "svelte-i18n": "./dist/index.js"
     },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/svelte-intl/cli.git"
+    },
     "main": "./dist/index.js",
     "files": [
         "dist"
