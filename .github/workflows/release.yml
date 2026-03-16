@@ -31,15 +31,14 @@ jobs:
                   registry-url: https://registry.npmjs.org
 
             - name: Install dependencies
-              working-directory: cli
               run: pnpm install --frozen-lockfile
 
             - name: Create Release Pull Request or Publish to npm
               id: changesets
               uses: changesets/action@v1
               with:
-                  publish: pnpm --filter cli release
-                  version: pnpm --filter cli version
+                  publish: pnpm release
+                  version: pnpm version
                   commit: 'chore: release'
                   title: 'chore: release'
                   createGithubReleases: true
