@@ -1,18 +1,29 @@
 #!/usr/bin/env node
-import { Option, Command } from 'commander';
 import PACKAGE from '../package.json' with { type: 'json' };
-import { importJSON, fetchJSON, isURL, t } from './utils.js';
+import pc from 'picocolors';
+import { Command } from 'commander';
+import { importJSON, fetchJSON, isURL, t, error, success, spinner } from './utils.js';
 import { z } from 'zod';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { parse, dirname } from 'node:path';
+import { dirname } from 'node:path';
 
-const program = new Command();
-const schema = z.record(z.string(), z.string());
+export const program = new Command();
+export const schema = z.record(z.string(), z.string());
 
 // prettier-ignore
 program.name('svelte-i18n')
     .description('CLI tool for svelte-i18n')
     .version(PACKAGE.version);
+
+program.configureHelp({
+    styleTitle: (str) => pc.bold(str),
+    styleCommandText: (str) => pc.cyan(str),
+    styleCommandDescription: (str) => pc.magenta(str),
+    styleDescriptionText: (str) => pc.italic(str),
+    styleOptionText: (str) => pc.green(str),
+    styleArgumentText: (str) => pc.yellow(str),
+    styleSubcommandText: (str) => pc.blue(str),
+});
 
 program
     .command('generate-types')
@@ -27,19 +38,26 @@ program
         './i18n-types.d.ts',
     )
     .action(async ({ input, output }) => {
-        const [json, error] = await t(() => (isURL(input) ? fetchJSON(input) : importJSON(input)));
-
-        if (error) {
-            return program.error(
-                `Failed to load JSON from ${input}: ${error instanceof Error ? error.message : String(error)}`,
+        if (!input) {
+            return error(
+                '--input option is required. Please provide a path to the translations file or a URL.',
             );
         }
 
-        const [validatedJson, validationError] = await t(() => schema.parse(json));
+        const stopSpinner = spinner('Loading and validating JSON...');
+        const [json, err] = await t(() => (isURL(input) ? fetchJSON(input) : importJSON(input)));
 
-        if (validationError || !validatedJson) {
-            return program.error(
-                `Failed to validate JSON from ${input}: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
+        if (err) {
+            return error(
+                `Failed to load JSON from ${input}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+        }
+
+        const [validatedJson, validationErr] = await t(() => schema.parse(json));
+
+        if (validationErr || !validatedJson) {
+            return error(
+                `Failed to validate JSON from ${input}: ${validationErr instanceof Error ? validationErr.message : String(validationErr)}`,
             );
         }
 
@@ -52,13 +70,14 @@ program
 
         await mkdir(dirname(output), { recursive: true });
 
-        writeFile(output, typeDefinition, {})
-            .then(() => console.log('Type definitions generated successfully in i18n-types.d.ts'))
+        writeFile(output, typeDefinition)
+            .then(() => success('Type definitions generated successfully in ' + output))
             .catch((err) =>
-                program.error(
+                error(
                     `Failed to write type definitions: ${err instanceof Error ? err.message : String(err)}`,
                 ),
-            );
+            )
+            .finally(() => stopSpinner());
     });
 
 program.parse();

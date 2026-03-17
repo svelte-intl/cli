@@ -16,7 +16,7 @@
     ],
     "scripts": {
         "build": "tsc",
-        "dev": "tsx watch src/index.ts generate-types --input http://localhost:5173/api/locales/en --output ./.i18n/types.ts",
+        "dev": "tsx watch src/index.ts generate-types",
         "start": "node dist/index.js",
         "format": "prettier --write src",
         "format:check": "prettier --check src",
