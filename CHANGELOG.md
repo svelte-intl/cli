@@ -1,5 +1,11 @@
 # @svelte-i18n/cli
 
+## 1.0.0
+
+### Major Changes
+
+- fd651a2: v1
+
 ## 0.1.2
 
 ### Patch Changes
