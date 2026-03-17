@@ -4,7 +4,7 @@
     "description": "CLI tool for svelte-i18n",
     "type": "module",
     "bin": {
-        "svelte-i18n": "./dist/index.js"
+        "@svelte-i18n/cli": "./dist/index.js"
     },
     "repository": {
         "type": "git",
