@@ -22,7 +22,7 @@
         "format:check": "prettier --check src",
         "changeset": "changeset",
         "version": "changeset version",
-        "release": "pnpm build && changeset publish",
+        "release": "pnpm build && node scripts/publish.mjs",
         "test": "tsc && node --test test/"
     },
     "dependencies": {
