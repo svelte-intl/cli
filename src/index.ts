@@ -2,17 +2,15 @@
 import PACKAGE from '../package.json' with { type: 'json' };
 import pc from 'picocolors';
 import { Command } from 'commander';
-import { importJSON, fetchJSON, isURL, t, error, success, spinner } from './utils.js';
-import { z } from 'zod';
-import { writeFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { loadJSON, message, renderTypes, spinner, success, validateDictionary } from './utils.js';
 
-export const program = new Command();
-export const schema = z.record(z.string(), z.string());
+const program = new Command();
 
 // prettier-ignore
 program.name('svelte-i18n')
-    .description('CLI tool for svelte-i18n')
+    .description('CLI for @svelte-i18n/core')
     .version(PACKAGE.version);
 
 program.configureHelp({
@@ -25,59 +23,50 @@ program.configureHelp({
     styleSubcommandText: (str) => pc.blue(str),
 });
 
+const fail = (text: string): never => program.error(pc.red(`✖ ${text}`));
+
 program
     .command('generate-types')
-    .description('Generate TypeScript types for translations')
-    .option(
-        '--input <path>',
-        'Path to the translations file (e.g., src/locales/en.json) or a URL (e.g., https://example.com/locales/en.json)',
+    .description('Generate an I18nDictionary type from a flat JSON dictionary')
+    .requiredOption(
+        '--input <path-or-url>',
+        'JSON dictionary: a file path (src/lib/locales/en.json) or an http(s) URL',
     )
-    .option(
-        '--output <path>',
-        'Path to the output file (e.g., src/locales/en.d.ts)',
-        './i18n-types.d.ts',
+    .option('--output <path>', 'Where to write the type', './i18n-types.d.ts')
+    .addHelpText(
+        'after',
+        `
+Examples:
+  $ svelte-i18n generate-types --input src/lib/locales/en.json --output src/lib/i18n-types.d.ts
+  $ svelte-i18n generate-types --input https://cms.example.com/translations/en.json`,
     )
-    .action(async ({ input, output }) => {
-        if (!input) {
-            return error(
-                '--input option is required. Please provide a path to the translations file or a URL.',
+    .action(async ({ input, output }: { input: string; output: string }) => {
+        const stop = spinner(`Loading ${input}`);
+        let json: unknown;
+        try {
+            json = await loadJSON(input);
+        } catch (error) {
+            stop();
+            return fail(message(error));
+        }
+        stop();
+
+        const result = validateDictionary(json);
+        if ('problems' in result) {
+            return fail(
+                `${input} is not a valid dictionary:\n  - ${result.problems.join('\n  - ')}`,
             );
         }
 
-        const stopSpinner = spinner('Loading and validating JSON...');
-        const [json, err] = await t(() => (isURL(input) ? fetchJSON(input) : importJSON(input)));
-
-        if (err) {
-            return error(
-                `Failed to load JSON from ${input}: ${err instanceof Error ? err.message : String(err)}`,
-            );
+        const target = resolve(process.cwd(), output);
+        try {
+            await mkdir(dirname(target), { recursive: true });
+            await writeFile(target, renderTypes(Object.keys(result.dictionary)));
+        } catch (error) {
+            return fail(`Could not write ${output}: ${message(error)}`);
         }
 
-        const [validatedJson, validationErr] = await t(() => schema.parse(json));
-
-        if (validationErr || !validatedJson) {
-            return error(
-                `Failed to validate JSON from ${input}: ${validationErr instanceof Error ? validationErr.message : String(validationErr)}`,
-            );
-        }
-
-        const keys = Object.keys(validatedJson);
-        const typeName = 'I18nDictionary';
-
-        const typeDefinition = `export type ${typeName} = {\n${keys
-            .map((key) => `    '${key.replace(/'/g, "\\'")}': string;`)
-            .join('\n')}\n};\n`;
-
-        await mkdir(dirname(output), { recursive: true });
-
-        writeFile(output, typeDefinition)
-            .then(() => success('Type definitions generated successfully in ' + output))
-            .catch((err) =>
-                error(
-                    `Failed to write type definitions: ${err instanceof Error ? err.message : String(err)}`,
-                ),
-            )
-            .finally(() => stopSpinner());
+        success(`Wrote ${Object.keys(result.dictionary).length} keys to ${output}`);
     });
 
-program.parse();
+await program.parseAsync();
