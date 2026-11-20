@@ -4,7 +4,7 @@
     "description": "CLI for @svelte-i18n/core: generate TypeScript types from flat JSON translation dictionaries",
     "type": "module",
     "bin": {
-        "svelte-i18n": "./dist/index.js"
+        "svelte-i18n": "dist/index.js"
     },
     "repository": {
         "type": "git",
